@@ -36,15 +36,21 @@ def score(text):
 
     return running_score
 
+def most_likely_english_string(possibly_english_strings):
+    most_likely_english = None
+    for string in possibly_english_strings:
+        string_score = score(string)
+        if most_likely_english is None or most_likely_english[0] > string_score:
+            most_likely_english = (string_score, string)
+    return most_likely_english[1]
+
 def crack_ciphertext(ciphertext):
-    most_likely_plaintext = None
-    for key in letters:
-        possible_decrypted_bytes = xor_bytes_with_byte(ciphertext, ord(key))
-        possible_plaintext = codecs.decode(possible_decrypted_bytes, 'ascii')
-        plaintext_score = score(possible_plaintext)
-        if most_likely_plaintext is None or most_likely_plaintext[0] > plaintext_score:
-            most_likely_plaintext = (plaintext_score, possible_plaintext)
-    return most_likely_plaintext[1]
+    def possible_plaintexts():
+        for key in letters:
+            possible_decrypted_bytes = xor_bytes_with_byte(ciphertext, ord(key))
+            possible_plaintext = codecs.decode(possible_decrypted_bytes, 'ascii', 'ignore')
+            yield possible_plaintext
+    return most_likely_english_string(possible_plaintexts())
 
 class Test13XorCipher(unittest.TestCase):
 

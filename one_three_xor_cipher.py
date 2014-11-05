@@ -5,13 +5,7 @@ import codecs
 
 SAMPLE_ENGLISH_TEXT = open('resources/english_language_sample.txt', 'r').read()
 
-lower_letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-                 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-                 'w', 'x', 'y', 'z']
-
-upper_letters = [l.upper() for l in lower_letters]
-
-letters = lower_letters + upper_letters
+letters = [chr(ascii_code) for ascii_code in range(0, 128)]
 
 def xor_bytes_with_byte(ciphertext, key):
     return bytes(byte ^ key for byte in ciphertext)

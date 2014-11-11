@@ -28,7 +28,7 @@ def cipher_bytes_from_file(filename):
 
 def score_key_size(key_size, ciphertext):
     num_key_blocks_in_ciphertext = len(ciphertext) / key_size
-    num_block_pairs_to_sample = min([2, int(num_key_blocks_in_ciphertext / 2)])
+    num_block_pairs_to_sample = min([5, int(num_key_blocks_in_ciphertext / 2)])
 
     if num_block_pairs_to_sample == 0:
         raise Exception("Key size is too large to repeat fully in given ciphertext")
@@ -54,8 +54,9 @@ def guess_key_size(ciphertext):
         size_and_score = (key_size, score_key_size(key_size, ciphertext))
         sizes_and_scores.append(size_and_score)
     #from pprint import pprint; pprint(sorted(sizes_and_scores, key = lambda x: x[1]))
-    most_likely_pair = min(sizes_and_scores, key = lambda x: x[1])
-    return most_likely_pair[0]
+    most_likely_pairs = sorted(sizes_and_scores, key = lambda x: x[1])
+    most_likely_sizes = [pair[0] for pair in most_likely_pairs]
+    return most_likely_sizes[:3]
 
 
 class Test16BreakRepeatingXor(unittest.TestCase):
@@ -76,22 +77,22 @@ class Test16BreakRepeatingXor(unittest.TestCase):
 
     def test_guess_key_size_with_dummy_ciphertext(self):
         ciphertext = b"111" + b"111" + b"222" + b"222"
-        self.assertEqual(guess_key_size(ciphertext), 3)
+        self.assertIn(3, guess_key_size(ciphertext))
 
     def test_guess_key_size_with_simple_ciphertext(self):
         plaintext = b"1" * 100
         ciphertext = repeating_key_xor(plaintext, b'12345')
-        self.assertEqual(guess_key_size(ciphertext), 5)
+        self.assertIn(5, guess_key_size(ciphertext))
 
-#    def test_guess_key_size_with_english_sample_ciphertext(self):
-#        plaintext = codecs.encode(self._english_sample_bytes(), 'base64')
-#        key = b'key'
-#        ciphertext = repeating_key_xor(plaintext, key)
-#        self.assertEqual(guess_key_size(ciphertext), len(key))
+    def test_guess_key_size_with_english_sample_ciphertext(self):
+        plaintext = self._english_sample_bytes()
+        key = b'akey'
+        ciphertext = repeating_key_xor(plaintext, key)
+        self.assertIn(len(key), guess_key_size(ciphertext))
 
 
-#    def test_guess_real_ciphertext_key_size(self):
-#        ciphertext = cipher_bytes_from_file('resources/6.txt')
-#        print('guess: ' + str(guess_key_size(ciphertext)))
+    def test_guess_real_ciphertext_key_size(self):
+        ciphertext = cipher_bytes_from_file('resources/6.txt')
+        print('guess: ' + str(guess_key_size(ciphertext)))
 
 

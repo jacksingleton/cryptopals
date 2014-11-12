@@ -31,12 +31,16 @@ def score(text):
     return running_score
 
 def most_likely_english_string(possibly_english_strings):
+    return most_likely_english_strings(possibly_english_strings)[0]
+
+def most_likely_english_strings(possibly_english_strings):
     most_likely_english = None
+    scores_and_strings = []
     for string in possibly_english_strings:
         string_score = score(string)
-        if most_likely_english is None or most_likely_english[0] > string_score:
-            most_likely_english = (string_score, string)
-    return most_likely_english[1]
+        scores_and_strings.append((string_score, string))
+    sorted_scores_and_strings = sorted(scores_and_strings, key = lambda x: x[0])
+    return [score_and_string[1] for score_and_string in sorted_scores_and_strings]
 
 def crack_ciphertext(ciphertext):
     def possible_plaintexts():

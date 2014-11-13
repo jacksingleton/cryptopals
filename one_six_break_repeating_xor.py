@@ -6,11 +6,16 @@ import sys
 import string
 import random
 from pprint import pprint
+import itertools
 
 from one_five_repeating_key_xor import repeating_key_xor
 from one_three_xor_cipher import xor_bytes_with_byte
 from one_three_xor_cipher import letters
 from one_three_xor_cipher import most_likely_english_strings
+from one_three_xor_cipher import english_language_score
+
+def percent(fraction):
+    return (fraction.numerator / fraction.denominator) * 100
 
 def byte_to_bits(byte):
     return bin(byte)[2:].rjust(8, '0')
@@ -61,31 +66,51 @@ def guess_key_size(ciphertext):
     most_likely_sizes = [pair[0] for pair in most_likely_pairs]
     return most_likely_sizes
 
-def transpose_blocks(bytestring, block_size):
-    blocks = [bytestring[i:i+block_size] for i in range(0, len(bytestring), block_size)]
-    transposed_blocks = [list(block) for block in zip(*blocks)]
-    return transposed_blocks
+def transpose(list_of_lists):
+    return [list(t) for t in zip(*list_of_lists)]
 
-def most_likely_english_utf8_bytes(possibly_english_bytestrings):
-    possibly_english_strings = [codecs.decode(string, 'utf8')
-            for string in possibly_english_bytestrings]
-    most_likely_strings = most_likely_english_strings(possibly_english_strings)
-    return (codecs.encode(s, 'utf8') for s in most_likely_strings)
+def transpose_blocks(bytestring, block_size):
+    block_remainder_characters = len(bytestring) % block_size
+    even_block_bytestring = bytestring[:-block_remainder_characters]
+    blocks = [even_block_bytestring[i:i+block_size]
+            for i in range(0, len(even_block_bytestring), block_size)]
+    return transpose(blocks)
 
 def guess_key_for_transposed_block(block):
-    plaintexts_and_keys = dict((xor_bytes_with_byte(block, ord(letter)), ord(letter))
-        for letter in letters)
-    unicode_plaintexts = [x[0] for x in plaintexts_and_keys.items()]
+    def keys_and_scores():
+        for letter in letters:
+            letter_byte = ord(letter)
+            plaintext_bytes = xor_bytes_with_byte(block, letter_byte)
+            plaintext_unicode = codecs.decode(plaintext_bytes, 'utf8', 'ignore')
+            yield (letter_byte, english_language_score(plaintext_unicode))
 
-    possibly_english_plaintexts = most_likely_english_utf8_bytes(unicode_plaintexts)
+    sorted_keys_and_scores = sorted(keys_and_scores(), key = lambda ks: ks[1])
 
-    return (plaintexts_and_keys[s] for s in possibly_english_plaintexts)
+    most_likely_keys = [ks[0] for ks in sorted_keys_and_scores]
 
+    return most_likely_keys
 
 def crack_ciphertext_for_key_size(ciphertext, key_size):
     block_samples = transpose_blocks(ciphertext, key_size)
-    entire_key_guesses = [guess_key_for_transposed_block(b) for b in block_samples]
+    block_sample_guesses = [guess_key_for_transposed_block(b) for b in block_samples]
+    entire_key_guesses = [bytes(k) for k in transpose(block_sample_guesses)]
     return entire_key_guesses
+
+def crack_ciphertext(ciphertext):
+    key_size_guesses = guess_key_size(ciphertext)[:5]
+    key_guesses = [key
+            for key_size in key_size_guesses
+            for key in crack_ciphertext_for_key_size(ciphertext, key_size)[:5]]
+
+    def score_key_and_text():
+        for key in key_guesses:
+            maybe_plaintext = repeating_key_xor(ciphertext, key)
+            plaintext_unicode = codecs.decode(maybe_plaintext, 'utf8', 'ignore')
+            plaintext_score = english_language_score(plaintext_unicode)
+            yield (plaintext_score, key, maybe_plaintext)
+
+    return sorted(score_key_and_text(), key = lambda skt: skt[0])
+
 
 class Test16BreakRepeatingXor(unittest.TestCase):
 
@@ -112,7 +137,7 @@ class Test16BreakRepeatingXor(unittest.TestCase):
         ciphertext = repeating_key_xor(plaintext, b'12345')
         self.assertIn(5, guess_key_size(ciphertext)[:5])
 
-    def test_guess_key_size_with_english_sample_ciphertext(self):
+    def test_guess_key_size_with_english_sample_plaintext(self):
         plaintext = self._english_sample_bytes()
         key = b'akey'
         ciphertext = repeating_key_xor(plaintext, key)
@@ -130,13 +155,30 @@ class Test16BreakRepeatingXor(unittest.TestCase):
         most_likely_key = list(guess_key_for_transposed_block(ciphertext))[0]
         self.assertEqual(most_likely_key, key)
 
-    def test_guess_real_ciphertext_key_size(self):
-        ciphertext = cipher_bytes_from_file('resources/6.txt')
-        key_size_guesses = guess_key_size(ciphertext)[:5]
-        possible_keys = [ key for i in key_size_guesses
-                for key in crack_ciphertext_for_key_size(ciphertext, i)]
-        possible_plaintexts = [repeating_key_xor(ciphertext, key) for key in possible_keys]
+    def test_transpose_blocks(self):
+        bytestring = bytes([ 1,  2,  3,
+                             4,  5,  6,
+                             7,  8,  9,
+                            10, 11, 12,
+                            13, 14, 15,
+                            16])
+        block_size = 3
+        transposed = transpose_blocks(bytestring, block_size)
+        self.assertEqual(transposed,
+                [[ 1,  4,  7, 10, 13],
+                 [ 2,  5,  8, 11, 14],
+                 [ 3,  6,  9, 12, 15]])
 
-        print(len(possible_plaintexts))
-        for text in possible_plaintexts:
-            print(text[:80])
+#    # Takes a while
+#    def test_crack_english_sample_plaintext(self):
+#        plaintext = self._english_sample_bytes()
+#        key = b'akey'
+#        ciphertext = repeating_key_xor(plaintext, key)
+#        possible_plaintexts = [text for _, _, text in crack_ciphertext(ciphertext)]
+#        self.assertIn(plaintext, possible_plaintexts)
+
+#    # Takes a while
+#    def test_guess_real_ciphertext_key_size(self):
+#        ciphertext = cipher_bytes_from_file('resources/6.txt')
+#        score, key, plaintext = crack_ciphertext(ciphertext)[0]
+#        self.assertEqual(codecs.decode(key, 'utf8'), 'Terminator X: Bring the noise')

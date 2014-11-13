@@ -18,7 +18,7 @@ def letter_ratios(text):
         letter_ratios[letter] = Fraction(count, text_length)
     return letter_ratios
 
-def score(text):
+def english_language_score(text):
     sample_letter_ratios = letter_ratios(SAMPLE_ENGLISH_TEXT)
     text_letter_ratios = letter_ratios(text)
 
@@ -34,10 +34,9 @@ def most_likely_english_string(possibly_english_strings):
     return most_likely_english_strings(possibly_english_strings)[0]
 
 def most_likely_english_strings(possibly_english_strings):
-    most_likely_english = None
     scores_and_strings = []
     for string in possibly_english_strings:
-        string_score = score(string)
+        string_score = english_language_score(string)
         scores_and_strings.append((string_score, string))
     sorted_scores_and_strings = sorted(scores_and_strings, key = lambda x: x[0])
     return [score_and_string[1] for score_and_string in sorted_scores_and_strings]
@@ -61,7 +60,7 @@ class Test13XorCipher(unittest.TestCase):
     def test_score_plaintext(self):
         random = 'wNLr3eLZpolOJcxCPxyDAPNw9YrPvKHCbX'
         english = 'this a real sentence'
-        self.assertLess(score(english), score(random))
+        self.assertLess(english_language_score(english), english_language_score(random))
 
     def test_crack_ciphertext(self):
         ciphertext = codecs.decode('1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736', 'hex')

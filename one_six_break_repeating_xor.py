@@ -143,11 +143,6 @@ class Test16BreakRepeatingXor(unittest.TestCase):
         ciphertext = repeating_key_xor(plaintext, key)
         self.assertIn(len(key), guess_key_size(ciphertext)[:5])
 
-    def test_transpose_blocks(self):
-        ciphertext = b'123' * 3
-        transposed_blocks = transpose_blocks(ciphertext, 3)
-        self.assertEqual(transposed_blocks, [[49, 49, 49], [50, 50, 50], [51, 51, 51]])
-
     def test_guess_key_for_transposed_block(self):
         block = b'this is english text'
         key = ord('a')
@@ -178,7 +173,10 @@ class Test16BreakRepeatingXor(unittest.TestCase):
 #        self.assertIn(plaintext, possible_plaintexts)
 
 #    # Takes a while
-#    def test_guess_real_ciphertext_key_size(self):
+#    def test_guess_real_ciphertext(self):
 #        ciphertext = cipher_bytes_from_file('resources/6.txt')
 #        score, key, plaintext = crack_ciphertext(ciphertext)[0]
+#        print('score:', percent(score))
+#        print('key:', codecs.decode(key, 'utf8'))
+#        print('plaintext:', codecs.decode(plaintext, 'utf8')[:80], '...')
 #        self.assertEqual(codecs.decode(key, 'utf8'), 'Terminator X: Bring the noise')
